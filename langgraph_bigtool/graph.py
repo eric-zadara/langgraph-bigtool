@@ -22,29 +22,30 @@ def create_agent(
     llm: LanguageModelLike,
     tool_registry: dict[str, BaseTool],
 ):
-
-    async def call_model(state: State, config: RunnableConfig, *, store: BaseStore) -> State:
+    async def call_model(
+        state: State, config: RunnableConfig, *, store: BaseStore
+    ) -> State:
         selected_tools = [tool_registry[id] for id in state["selected_tool_ids"]]
         llm_with_tools = llm.bind_tools([retrieve_tools, *selected_tools])
         response = llm_with_tools.invoke(state["messages"])
         return {"messages": [response]}
 
-
-    async def acall_model(state: State, config: RunnableConfig, *, store: BaseStore) -> State:
+    async def acall_model(
+        state: State, config: RunnableConfig, *, store: BaseStore
+    ) -> State:
         selected_tools = [tool_registry[id] for id in state["selected_tool_ids"]]
         llm_with_tools = llm.bind_tools([retrieve_tools, *selected_tools])
         response = await llm_with_tools.ainvoke(state["messages"])
         return {"messages": [response]}
 
-
     tool_node = ToolNode(tool for tool in tool_registry.values())
 
-    async def select_tools(tool_calls: list[dict], config: RunnableConfig, *, store: BaseStore) -> State:
+    async def select_tools(
+        tool_calls: list[dict], config: RunnableConfig, *, store: BaseStore
+    ) -> State:
         selected_tools = {}
         for tool_call in tool_calls:
-            result = retrieve_tools(
-                tool_call["args"]["query"], store=store
-            )
+            result = retrieve_tools(tool_call["args"]["query"], store=store)
             selected_tools[tool_call["id"]] = result
 
         tool_messages = []
@@ -52,13 +53,10 @@ def create_agent(
         for tool_call_id, batch in selected_tools.items():
             tool_names = [tool_registry[result.key].name for result in batch]
             tool_messages.append(
-                ToolMessage(
-                    f"Available tools: {tool_names}", tool_call_id=tool_call_id
-                )
+                ToolMessage(f"Available tools: {tool_names}", tool_call_id=tool_call_id)
             )
             tool_ids.extend(result.key for result in batch)
         return {"messages": tool_messages, "selected_tool_ids": tool_ids}
-
 
     def should_continue(state: State, *, store: BaseStore):
         messages = state["messages"]
@@ -75,7 +73,6 @@ def create_agent(
                     destinations.append(Send("tools", [tool_call]))
 
             return destinations
-
 
     builder = StateGraph(State)
 
