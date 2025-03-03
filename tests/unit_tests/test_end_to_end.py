@@ -1,12 +1,17 @@
 import math
 import types
 import uuid
+from typing import Callable
 
+import pytest
 from langchain_core.embeddings import Embeddings
 from langchain_core.embeddings.fake import DeterministicFakeEmbedding
 from langchain_core.language_models import GenericFakeChatModel, LanguageModelLike
 from langchain_core.messages import AIMessage, ToolMessage
+from langgraph.prebuilt import InjectedStore
+from langgraph.store.base import BaseStore
 from langgraph.store.memory import InMemoryStore
+from typing_extensions import Annotated
 
 from langgraph_bigtool import create_agent
 from langgraph_bigtool.graph import State
@@ -119,7 +124,12 @@ def _validate_result(result: State) -> None:
     assert reply.content
 
 
-def run_end_to_end_test(llm: LanguageModelLike, embeddings: Embeddings) -> None:
+def run_end_to_end_test(
+    llm: LanguageModelLike,
+    embeddings: Embeddings,
+    retrieve_tools_function: Callable | None = None,
+    retrieve_tools_coroutine: Callable | None = None,
+) -> None:
     # Store tool descriptions in store
     store = InMemoryStore(
         index={
@@ -137,7 +147,12 @@ def run_end_to_end_test(llm: LanguageModelLike, embeddings: Embeddings) -> None:
             },
         )
 
-    builder = create_agent(llm, tool_registry)
+    builder = create_agent(
+        llm,
+        tool_registry,
+        retrieve_tools_function=retrieve_tools_function,
+        retrieve_tools_coroutine=retrieve_tools_coroutine,
+    )
     agent = builder.compile(store=store)
 
     result = agent.invoke(
@@ -147,7 +162,10 @@ def run_end_to_end_test(llm: LanguageModelLike, embeddings: Embeddings) -> None:
 
 
 async def run_end_to_end_test_async(
-    llm: LanguageModelLike, embeddings: Embeddings
+    llm: LanguageModelLike,
+    embeddings: Embeddings,
+    retrieve_tools_function: Callable | None = None,
+    retrieve_tools_coroutine: Callable | None = None,
 ) -> None:
     # Store tool descriptions in store
     store = InMemoryStore(
@@ -166,7 +184,12 @@ async def run_end_to_end_test_async(
             },
         )
 
-    builder = create_agent(llm, tool_registry)
+    builder = create_agent(
+        llm,
+        tool_registry,
+        retrieve_tools_function=retrieve_tools_function,
+        retrieve_tools_coroutine=retrieve_tools_coroutine,
+    )
     agent = builder.compile(store=store)
 
     result = await agent.ainvoke(
@@ -175,11 +198,87 @@ async def run_end_to_end_test_async(
     _validate_result(result)
 
 
+def custom_retrieve_tools(
+    query: str,
+    *,
+    store: Annotated[BaseStore, InjectedStore],
+) -> list[str]:
+    raise AssertionError
+
+
+async def acustom_retrieve_tools(
+    query: str,
+    *,
+    store: Annotated[BaseStore, InjectedStore],
+) -> list[str]:
+    raise AssertionError
+
+
 def test_end_to_end() -> None:
+    # Default
     fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
     run_end_to_end_test(fake_llm, fake_embeddings)
 
+    # Custom
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
+    with pytest.raises(TypeError):
+        # No sync function provided
+        run_end_to_end_test(
+            fake_llm,
+            fake_embeddings,
+            retrieve_tools_coroutine=acustom_retrieve_tools,
+        )
+
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
+    with pytest.raises(AssertionError):
+        # Calls custom sync function
+        run_end_to_end_test(
+            fake_llm,
+            fake_embeddings,
+            retrieve_tools_function=custom_retrieve_tools,
+            retrieve_tools_coroutine=acustom_retrieve_tools,
+        )
+
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
+    with pytest.raises(AssertionError):
+        # Calls custom sync function
+        run_end_to_end_test(
+            fake_llm,
+            fake_embeddings,
+            retrieve_tools_function=custom_retrieve_tools,
+        )
+
 
 async def test_end_to_end_async() -> None:
+    # Default
     fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
     await run_end_to_end_test_async(fake_llm, fake_embeddings)
+
+    # Custom
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
+    with pytest.raises(AssertionError):
+        # Calls custom sync function
+        await run_end_to_end_test_async(
+            fake_llm,
+            fake_embeddings,
+            retrieve_tools_function=custom_retrieve_tools,
+        )
+
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
+    with pytest.raises(AssertionError):
+        # Calls custom sync function
+        await run_end_to_end_test_async(
+            fake_llm,
+            fake_embeddings,
+            retrieve_tools_function=custom_retrieve_tools,
+            retrieve_tools_coroutine=acustom_retrieve_tools,
+        )
+
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
+    with pytest.raises(AssertionError):
+        # Calls custom sync function
+        await run_end_to_end_test_async(
+            fake_llm,
+            fake_embeddings,
+            retrieve_tools_coroutine=acustom_retrieve_tools,
+        )
