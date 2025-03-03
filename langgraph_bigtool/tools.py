@@ -1,3 +1,5 @@
+from typing import Any
+
 from langgraph.prebuilt import InjectedStore
 from langgraph.store.base import BaseStore
 from typing_extensions import Annotated
@@ -5,21 +7,38 @@ from typing_extensions import Annotated
 ToolId = str
 
 
-def retrieve_tools(
-    query: str,
+def get_default_retrieval_tool(
+    namespace_prefix: tuple[str, ...],
     *,
-    store: Annotated[BaseStore, InjectedStore],
-) -> list[ToolId]:
-    """Retrieve a tool to use, given a search query."""
-    results = store.search(("tools",), query=query, limit=2)
-    return [result.key for result in results]
+    limit: int = 2,
+    filter: dict[str, Any] | None = None,
+):
+    def retrieve_tools(
+        query: str,
+        *,
+        store: Annotated[BaseStore, InjectedStore],
+    ) -> list[ToolId]:
+        """Retrieve a tool to use, given a search query."""
+        results = store.search(
+            namespace_prefix,
+            query=query,
+            limit=limit,
+            filter=filter,
+        )
+        return [result.key for result in results]
 
+    async def aretrieve_tools(
+        query: str,
+        *,
+        store: Annotated[BaseStore, InjectedStore],
+    ) -> list[ToolId]:
+        """Retrieve a tool to use, given a search query."""
+        results = await store.asearch(
+            namespace_prefix,
+            query=query,
+            limit=limit,
+            filter=filter,
+        )
+        return [result.key for result in results]
 
-async def aretrieve_tools(
-    query: str,
-    *,
-    store: Annotated[BaseStore, InjectedStore],
-) -> list[ToolId]:
-    """Retrieve a tool to use, given a search query."""
-    results = await store.asearch(("tools",), query=query, limit=2)
-    return [result.key for result in results]
+    return retrieve_tools, aretrieve_tools

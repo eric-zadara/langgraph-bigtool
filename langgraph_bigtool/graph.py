@@ -11,7 +11,7 @@ from langgraph.store.base import BaseStore
 from langgraph.types import Send
 from langgraph.utils.runnable import RunnableCallable
 
-from langgraph_bigtool.tools import aretrieve_tools, retrieve_tools
+from langgraph_bigtool.tools import get_default_retrieval_tool
 
 
 class State(MessagesState):
@@ -37,12 +37,16 @@ def create_agent(
     llm: LanguageModelLike,
     tool_registry: dict[str, BaseTool],
     *,
+    limit: int = 2,
+    filter: dict[str, any] | None = None,
+    namespace_prefix: tuple[str, ...] = ("tools",),
     retrieve_tools_function: Callable | None = None,
     retrieve_tools_coroutine: Callable | None = None,
 ) -> StateGraph:
     if retrieve_tools_function is None and retrieve_tools_coroutine is None:
-        retrieve_tools_function = retrieve_tools
-        retrieve_tools_coroutine = aretrieve_tools
+        retrieve_tools_function, retrieve_tools_coroutine = get_default_retrieval_tool(
+            namespace_prefix, limit=limit, filter=filter
+        )
 
     def call_model(state: State, config: RunnableConfig, *, store: BaseStore) -> State:
         selected_tools = [tool_registry[id] for id in state["selected_tool_ids"]]
@@ -65,7 +69,7 @@ def create_agent(
     ) -> State:
         selected_tools = {}
         for tool_call in tool_calls:
-            result = retrieve_tools_function(tool_call["args"]["query"], store=store)
+            result = retrieve_tools_function(**tool_call["args"], store=store)
             selected_tools[tool_call["id"]] = result
 
         tool_messages, tool_ids = _format_selected_tools(selected_tools, tool_registry)
@@ -76,9 +80,7 @@ def create_agent(
     ) -> State:
         selected_tools = {}
         for tool_call in tool_calls:
-            result = await retrieve_tools_coroutine(
-                tool_call["args"]["query"], store=store
-            )
+            result = await retrieve_tools_coroutine(**tool_call["args"], store=store)
             selected_tools[tool_call["id"]] = result
 
         tool_messages, tool_ids = _format_selected_tools(selected_tools, tool_registry)
