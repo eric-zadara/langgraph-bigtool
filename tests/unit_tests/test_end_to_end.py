@@ -9,6 +9,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.store.memory import InMemoryStore
 
 from langgraph_bigtool import create_agent
+from langgraph_bigtool.graph import State
 from langgraph_bigtool.utils import convert_positional_only_function_to_tool
 
 EMBEDDING_SIZE = 1536
@@ -79,30 +80,7 @@ def _get_fake_llm_and_embeddings():
     return fake_llm, fake_embeddings
 
 
-def run_end_to_end_test(llm: LanguageModelLike, embeddings: Embeddings) -> None:
-    # Store tool descriptions in store
-    store = InMemoryStore(
-        index={
-            "embed": embeddings,
-            "dims": EMBEDDING_SIZE,
-            "fields": ["description"],
-        }
-    )
-    for tool_id, tool in tool_registry.items():
-        store.put(
-            ("tools",),
-            tool_id,
-            {
-                "description": f"{tool.name}: {tool.description}",
-            },
-        )
-
-    builder = create_agent(llm, tool_registry)
-    agent = builder.compile(store=store)
-
-    result = agent.invoke(
-        {"messages": "Use available tools to calculate arc cosine of 0.5."}
-    )
+def _validate_result(result: State) -> None:
     assert set(result.keys()) == {"messages", "selected_tool_ids"}
     assert "acos" in [
         tool_registry[tool_id].name for tool_id in result["selected_tool_ids"]
@@ -141,6 +119,67 @@ def run_end_to_end_test(llm: LanguageModelLike, embeddings: Embeddings) -> None:
     assert reply.content
 
 
+def run_end_to_end_test(llm: LanguageModelLike, embeddings: Embeddings) -> None:
+    # Store tool descriptions in store
+    store = InMemoryStore(
+        index={
+            "embed": embeddings,
+            "dims": EMBEDDING_SIZE,
+            "fields": ["description"],
+        }
+    )
+    for tool_id, tool in tool_registry.items():
+        store.put(
+            ("tools",),
+            tool_id,
+            {
+                "description": f"{tool.name}: {tool.description}",
+            },
+        )
+
+    builder = create_agent(llm, tool_registry)
+    agent = builder.compile(store=store)
+
+    result = agent.invoke(
+        {"messages": "Use available tools to calculate arc cosine of 0.5."}
+    )
+    _validate_result(result)
+
+
+async def run_end_to_end_test_async(
+    llm: LanguageModelLike, embeddings: Embeddings
+) -> None:
+    # Store tool descriptions in store
+    store = InMemoryStore(
+        index={
+            "embed": embeddings,
+            "dims": EMBEDDING_SIZE,
+            "fields": ["description"],
+        }
+    )
+    for tool_id, tool in tool_registry.items():
+        await store.aput(
+            ("tools",),
+            tool_id,
+            {
+                "description": f"{tool.name}: {tool.description}",
+            },
+        )
+
+    builder = create_agent(llm, tool_registry)
+    agent = builder.compile(store=store)
+
+    result = await agent.ainvoke(
+        {"messages": "Use available tools to calculate arc cosine of 0.5."}
+    )
+    _validate_result(result)
+
+
 def test_end_to_end() -> None:
     fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
     run_end_to_end_test(fake_llm, fake_embeddings)
+
+
+async def test_end_to_end_async() -> None:
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
+    await run_end_to_end_test_async(fake_llm, fake_embeddings)

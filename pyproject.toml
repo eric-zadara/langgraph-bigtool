@@ -19,6 +19,7 @@ test = [
     "ruff>=0.9.4",
     "mypy>=1.8.0",
     "pytest-socket>=0.7.0",
+    "pytest-asyncio<1.0.0,>=0.21.1",
     "types-setuptools>=69.0.0",
 ]
 test_integration = [
@@ -33,6 +34,7 @@ testpaths = [
 ]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+asyncio_mode = "auto"
 
 [tool.ruff]
 line-length = 88

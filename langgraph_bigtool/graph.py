@@ -64,12 +64,12 @@ def create_agent(
         tool_messages, tool_ids = _format_selected_tools(selected_tools, tool_registry)
         return {"messages": tool_messages, "selected_tool_ids": tool_ids}
 
-    def aselect_tools(
+    async def aselect_tools(
         tool_calls: list[dict], config: RunnableConfig, *, store: BaseStore
     ) -> State:
         selected_tools = {}
         for tool_call in tool_calls:
-            result = aretrieve_tools(tool_call["args"]["query"], store=store)
+            result = await aretrieve_tools(tool_call["args"]["query"], store=store)
             selected_tools[tool_call["id"]] = result
 
         tool_messages, tool_ids = _format_selected_tools(selected_tools, tool_registry)
