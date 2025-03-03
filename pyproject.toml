@@ -11,7 +11,6 @@ requires-python = ">=3.10"
 dependencies = [
     "langgraph>=0.3.0,<0.4.0",
     "langgraph-prebuilt>=0.1.0,<0.2.0",
-    "langchain[openai]>=0.3.19,<0.4",
 ]
 
 [dependency-groups]
@@ -21,6 +20,9 @@ test = [
     "mypy>=1.8.0",
     "pytest-socket>=0.7.0",
     "types-setuptools>=69.0.0",
+]
+test_integration = [
+    "langchain[openai]>=0.3.19,<0.4",
 ]
 
 [tool.pytest.ini_options]

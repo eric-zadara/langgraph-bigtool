@@ -32,8 +32,6 @@ for function in math_functions:
 # Store tool objects in registry
 tool_registry = {str(uuid.uuid4()): tool for tool in all_tools}
 
-fake_embeddings = DeterministicFakeEmbedding(size=EMBEDDING_SIZE)
-
 
 class FakeModel(GenericFakeChatModel):
     def bind_tools(self, *args, **kwargs) -> "FakeModel":
@@ -41,37 +39,44 @@ class FakeModel(GenericFakeChatModel):
         return self
 
 
-acos_tool = next(tool for tool in tool_registry.values() if tool.name == "acos")
-initial_query = f"{acos_tool.name}: {acos_tool.description}"  # make same as embedding
-fake_llm = FakeModel(
-    messages=iter(
-        [
-            AIMessage(
-                "",
-                tool_calls=[
-                    {
-                        "name": "retrieve_tools",
-                        "args": {"query": initial_query},
-                        "id": "abc123",
-                        "type": "tool_call",
-                    }
-                ],
-            ),
-            AIMessage(
-                "",
-                tool_calls=[
-                    {
-                        "name": "acos",
-                        "args": {"x": 0.5},
-                        "id": "abc234",
-                        "type": "tool_call",
-                    }
-                ],
-            ),
-            AIMessage("The arc cosine of 0.5 is approximately 1.047 radians."),
-        ]
+def _get_fake_llm_and_embeddings():
+    fake_embeddings = DeterministicFakeEmbedding(size=EMBEDDING_SIZE)
+
+    acos_tool = next(tool for tool in tool_registry.values() if tool.name == "acos")
+    initial_query = (
+        f"{acos_tool.name}: {acos_tool.description}"  # make same as embedding
     )
-)
+    fake_llm = FakeModel(
+        messages=iter(
+            [
+                AIMessage(
+                    "",
+                    tool_calls=[
+                        {
+                            "name": "retrieve_tools",
+                            "args": {"query": initial_query},
+                            "id": "abc123",
+                            "type": "tool_call",
+                        }
+                    ],
+                ),
+                AIMessage(
+                    "",
+                    tool_calls=[
+                        {
+                            "name": "acos",
+                            "args": {"x": 0.5},
+                            "id": "abc234",
+                            "type": "tool_call",
+                        }
+                    ],
+                ),
+                AIMessage("The arc cosine of 0.5 is approximately 1.047 radians."),
+            ]
+        )
+    )
+
+    return fake_llm, fake_embeddings
 
 
 def run_end_to_end_test(llm: LanguageModelLike, embeddings: Embeddings) -> None:
@@ -137,4 +142,5 @@ def run_end_to_end_test(llm: LanguageModelLike, embeddings: Embeddings) -> None:
 
 
 def test_end_to_end() -> None:
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
     run_end_to_end_test(fake_llm, fake_embeddings)

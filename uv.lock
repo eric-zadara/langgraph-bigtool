@@ -652,7 +652,6 @@ name = "langgraph-bigtool"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
-    { name = "langchain", extra = ["openai"] },
     { name = "langgraph" },
     { name = "langgraph-prebuilt" },
 ]
@@ -665,10 +664,12 @@ test = [
     { name = "ruff" },
     { name = "types-setuptools" },
 ]
+test-integration = [
+    { name = "langchain", extra = ["openai"] },
+]
 
 [package.metadata]
 requires-dist = [
-    { name = "langchain", extras = ["openai"], specifier = ">=0.3.19,<0.4" },
     { name = "langgraph", specifier = ">=0.3.0,<0.4.0" },
     { name = "langgraph-prebuilt", specifier = ">=0.1.0,<0.2.0" },
 ]
@@ -681,6 +682,7 @@ test = [
     { name = "ruff", specifier = ">=0.9.4" },
     { name = "types-setuptools", specifier = ">=69.0.0" },
 ]
+test-integration = [{ name = "langchain", extras = ["openai"], specifier = ">=0.3.19,<0.4" }]
 
 [[package]]
 name = "langgraph-checkpoint"

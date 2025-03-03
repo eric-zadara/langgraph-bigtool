@@ -8,10 +8,15 @@ all: help
 ######################
 
 # Define a variable for the test file path.
-TEST_FILE ?= tests/
+TEST_FILE ?= tests/unit_tests
+
+integration_test integration_tests: TEST_FILE=tests/integration_tests/
 
 test:
-	uv run pytest --disable-socket --allow-unix-socket $(TEST_FILE)
+	uv run --group test pytest --disable-socket --allow-unix-socket $(TEST_FILE)
+
+integration_test integration_tests:
+	uv run --group test --group test_integration pytest $(TEST_FILE)
 
 test_watch:
 	uv run ptw . -- $(TEST_FILE)
