@@ -13,6 +13,8 @@ def get_default_retrieval_tool(
     limit: int = 2,
     filter: dict[str, Any] | None = None,
 ):
+    """Get default sync and async functions for tool retrieval."""
+
     def retrieve_tools(
         query: str,
         *,

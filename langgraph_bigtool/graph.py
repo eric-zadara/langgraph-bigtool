@@ -47,6 +47,26 @@ def create_agent(
     retrieve_tools_function: Callable | None = None,
     retrieve_tools_coroutine: Callable | None = None,
 ) -> StateGraph:
+    """Create an agent with a registry of tools.
+
+    The agent will function as a typical ReAct agent, but is equipped with a tool
+    for retrieving tools from a registry. The agent will start with only this tool.
+    As it is executed, retrieved tools will be bound to the model.
+
+    Args:
+        llm: Language model to use for the agent.
+        tool_registry: a dict mapping string IDs to tools.
+        limit: Maximum number of tools to retrieve with each tool selection step.
+        filter: Optional key-value pairs with which to filter results.
+        namespace_prefix: Hierarchical path prefix to search within the Store. Defaults
+            to ("tools",).
+        retrieve_tools_function: Optional function to use for retrieving tools. This
+            function should return a list of tool IDs. If not specified, uses semantic
+            against the Store with limit, filter, and namespace_prefix set above.
+        retrieve_tools_coroutine: Optional coroutine to use for retrieving tools. This
+            function should return a list of tool IDs. If not specified, uses semantic
+            against the Store with limit, filter, and namespace_prefix set above.
+    """
     if retrieve_tools_function is None and retrieve_tools_coroutine is None:
         retrieve_tools_function, retrieve_tools_coroutine = get_default_retrieval_tool(
             namespace_prefix, limit=limit, filter=filter
