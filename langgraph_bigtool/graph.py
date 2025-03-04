@@ -14,7 +14,7 @@ from langgraph_bigtool.tools import get_default_retrieval_tool
 
 
 def _add_new(left: list, right: list) -> list:
-    """Extend left_list with new items from right_list."""
+    """Extend left list with new items from right list."""
     return left + [item for item in right if item not in set(left)]
 
 
