@@ -2,12 +2,14 @@ import math
 import types
 import uuid
 from typing import Callable
+from unittest.mock import patch
 
 import pytest
 from langchain_core.embeddings import Embeddings
 from langchain_core.embeddings.fake import DeterministicFakeEmbedding
 from langchain_core.language_models import GenericFakeChatModel, LanguageModelLike
 from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.tools import BaseTool
 from langgraph.prebuilt import InjectedStore
 from langgraph.store.base import BaseStore
 from langgraph.store.memory import InMemoryStore
@@ -282,3 +284,69 @@ async def test_end_to_end_async() -> None:
             fake_embeddings,
             retrieve_tools_coroutine=acustom_retrieve_tools,
         )
+
+
+def test_duplicate_tools() -> None:
+    fake_embeddings = DeterministicFakeEmbedding(size=EMBEDDING_SIZE)
+
+    acos_tool = next(tool for tool in tool_registry.values() if tool.name == "acos")
+    initial_query = (
+        f"{acos_tool.name}: {acos_tool.description}"  # make same as embedding
+    )
+
+    fake_llm = FakeModel(
+        messages=iter(
+            [
+                AIMessage(
+                    "",
+                    tool_calls=[
+                        {
+                            "name": "retrieve_tools",
+                            "args": {"query": initial_query},
+                            "id": "abc123",
+                            "type": "tool_call",
+                        }
+                    ],
+                ),
+                AIMessage(
+                    "",
+                    tool_calls=[
+                        {
+                            "name": "acos",
+                            "args": {"x": 0.5},
+                            "id": "abc234",
+                            "type": "tool_call",
+                        }
+                    ],
+                ),
+                AIMessage(
+                    "",
+                    tool_calls=[
+                        {
+                            "name": "retrieve_tools",
+                            "args": {"query": "another tool"},
+                            "id": "abc345",
+                            "type": "tool_call",
+                        },
+                        # Retrieval can return the same tool multiple times. Force this
+                        # by adding the same tool call twice.
+                        {
+                            "name": "retrieve_tools",
+                            "args": {"query": initial_query},
+                            "id": "abc456",
+                            "type": "tool_call",
+                        },
+                    ],
+                ),
+                AIMessage("The arc cosine of 0.5 is approximately 1.047 radians."),
+            ]
+        )
+    )
+    with patch.object(
+        FakeModel, "bind_tools", wraps=fake_llm.bind_tools
+    ) as mock_bind_tools:
+        run_end_to_end_test(fake_llm, fake_embeddings)
+        mock_bind_tools.assert_called()
+        for args, _ in mock_bind_tools.call_args_list:
+            tool_names = [tool.name for tool in args[0] if isinstance(tool, BaseTool)]
+            assert len(tool_names) == len(set(tool_names))

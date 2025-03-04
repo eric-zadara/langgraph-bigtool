@@ -1,4 +1,3 @@
-from operator import add
 from typing import Annotated, Callable
 
 from langchain_core.language_models import LanguageModelLike
@@ -14,8 +13,13 @@ from langgraph.utils.runnable import RunnableCallable
 from langgraph_bigtool.tools import get_default_retrieval_tool
 
 
+def _add_new(left: list, right: list) -> list:
+    """Extend left_list with new items from right_list."""
+    return left + [item for item in right if item not in set(left)]
+
+
 class State(MessagesState):
-    selected_tool_ids: Annotated[list[str], add]
+    selected_tool_ids: Annotated[list[str], _add_new]
 
 
 def _format_selected_tools(
