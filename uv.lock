@@ -653,7 +653,6 @@ version = "0.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "langgraph" },
-    { name = "langgraph-prebuilt" },
 ]
 
 [package.dev-dependencies]
@@ -672,10 +671,7 @@ test-integration = [
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "langgraph", specifier = ">=0.3.0,<0.4.0" },
-    { name = "langgraph-prebuilt", specifier = ">=0.1.0,<0.2.0" },
-]
+requires-dist = [{ name = "langgraph", specifier = ">=0.3.0,<0.4.0" }]
 
 [package.metadata.requires-dev]
 test = [
