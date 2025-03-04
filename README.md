@@ -8,8 +8,8 @@ to allow an agent to search for and retrieve relevant tools for a given problem.
 
 ## Features
 
-- 🤖 **Scalable access to tools**: Equip agents with hundreds or thousands of tools.
-- 🛠️ **Storage of tool metadata**: Control storage of tool descriptions, namespaces,
+- 🧰 **Scalable access to tools**: Equip agents with hundreds or thousands of tools.
+- 📝 **Storage of tool metadata**: Control storage of tool descriptions, namespaces,
 and other information through LangGraph's built-in
 [persistence layer](https://langchain-ai.github.io/langgraph/concepts/persistence/).
 Includes support for
@@ -17,7 +17,7 @@ Includes support for
 and
 [Postgres](https://langchain-ai.github.io/langgraph/reference/store/#langgraph.store.postgres.PostgresStore)
 backends.
-- 📝 **Customization of tool retrieval**: Optionally define custom functions for tool retrieval.
+- 💡 **Customization of tool retrieval**: Optionally define custom functions for tool retrieval.
 
 This library is built on top of [LangGraph](https://github.com/langchain-ai/langgraph), a powerful framework for building agent applications, and comes with out-of-box support for [streaming](https://langchain-ai.github.io/langgraph/how-tos/#streaming), [short-term and long-term memory](https://langchain-ai.github.io/langgraph/concepts/memory/) and [human-in-the-loop](https://langchain-ai.github.io/langgraph/concepts/human_in_the_loop/).
 
