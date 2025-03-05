@@ -47,7 +47,7 @@ class FakeModel(GenericFakeChatModel):
         return self
 
 
-def _get_fake_llm_and_embeddings():
+def _get_fake_llm_and_embeddings(retriever_tool_name: str = "retrieve_tools"):
     fake_embeddings = DeterministicFakeEmbedding(size=EMBEDDING_SIZE)
 
     acos_tool = next(tool for tool in tool_registry.values() if tool.name == "acos")
@@ -61,7 +61,7 @@ def _get_fake_llm_and_embeddings():
                     "",
                     tool_calls=[
                         {
-                            "name": "retrieve_tools",
+                            "name": retriever_tool_name,
                             "args": {"query": initial_query},
                             "id": "abc123",
                             "type": "tool_call",
@@ -199,13 +199,15 @@ async def run_end_to_end_test_async(
     )
     _validate_result(result)
 
+class CustomError(Exception):
+    pass
 
 def custom_retrieve_tools_store(
     query: str,
     *,
     store: Annotated[BaseStore, InjectedStore],
 ) -> list[str]:
-    raise AssertionError
+    raise CustomError
 
 
 async def acustom_retrieve_tools_store(
@@ -213,15 +215,15 @@ async def acustom_retrieve_tools_store(
     *,
     store: Annotated[BaseStore, InjectedStore],
 ) -> list[str]:
-    raise AssertionError
+    raise CustomError
 
 
 def custom_retrieve_tools_no_store(query: str) -> list[str]:
-    raise AssertionError
+    raise CustomError
 
 
 async def acustom_retrieve_tools_no_store(query: str) -> list[str]:
-    raise AssertionError
+    raise CustomError
 
 
 @pytest.mark.parametrize(
@@ -232,12 +234,16 @@ async def acustom_retrieve_tools_no_store(query: str) -> list[str]:
     ],
 )
 def test_end_to_end(custom_retrieve_tools, acustom_retrieve_tools) -> None:
+    retriever_tool_name = custom_retrieve_tools.__name__
+    retriever_tool_name_async = acustom_retrieve_tools.__name__
     # Default
     fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
     run_end_to_end_test(fake_llm, fake_embeddings)
 
     # Custom
-    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings(
+        retriever_tool_name=retriever_tool_name_async  # figure out
+    )
     with pytest.raises(TypeError):
         # No sync function provided
         run_end_to_end_test(
@@ -246,8 +252,10 @@ def test_end_to_end(custom_retrieve_tools, acustom_retrieve_tools) -> None:
             retrieve_tools_coroutine=acustom_retrieve_tools,
         )
 
-    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
-    with pytest.raises(AssertionError):
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings(
+        retriever_tool_name=retriever_tool_name
+    )
+    with pytest.raises(CustomError):
         # Calls custom sync function
         run_end_to_end_test(
             fake_llm,
@@ -256,8 +264,10 @@ def test_end_to_end(custom_retrieve_tools, acustom_retrieve_tools) -> None:
             retrieve_tools_coroutine=acustom_retrieve_tools,
         )
 
-    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
-    with pytest.raises(AssertionError):
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings(
+        retriever_tool_name=retriever_tool_name
+    )
+    with pytest.raises(CustomError):
         # Calls custom sync function
         run_end_to_end_test(
             fake_llm,
@@ -274,13 +284,17 @@ def test_end_to_end(custom_retrieve_tools, acustom_retrieve_tools) -> None:
     ],
 )
 async def test_end_to_end_async(custom_retrieve_tools, acustom_retrieve_tools) -> None:
+    retriever_tool_name = custom_retrieve_tools.__name__
+    retriever_tool_name_async = acustom_retrieve_tools.__name__
     # Default
     fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
     await run_end_to_end_test_async(fake_llm, fake_embeddings)
 
     # Custom
-    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
-    with pytest.raises(AssertionError):
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings(
+        retriever_tool_name=retriever_tool_name
+    )
+    with pytest.raises(CustomError):
         # Calls custom sync function
         await run_end_to_end_test_async(
             fake_llm,
@@ -288,8 +302,10 @@ async def test_end_to_end_async(custom_retrieve_tools, acustom_retrieve_tools) -
             retrieve_tools_function=custom_retrieve_tools,
         )
 
-    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
-    with pytest.raises(AssertionError):
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings(
+        retriever_tool_name=retriever_tool_name_async
+    )
+    with pytest.raises(CustomError):
         # Calls custom sync function
         await run_end_to_end_test_async(
             fake_llm,
@@ -298,8 +314,10 @@ async def test_end_to_end_async(custom_retrieve_tools, acustom_retrieve_tools) -
             retrieve_tools_coroutine=acustom_retrieve_tools,
         )
 
-    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
-    with pytest.raises(AssertionError):
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings(
+        retriever_tool_name=retriever_tool_name_async
+    )
+    with pytest.raises(CustomError):
         # Calls custom sync function
         await run_end_to_end_test_async(
             fake_llm,
