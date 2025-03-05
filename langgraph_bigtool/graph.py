@@ -72,11 +72,14 @@ def create_agent(
             namespace_prefix, limit=limit, filter=filter
         )
     # If needed, get argument name to inject Store
+    retrieve_tool_names = []
     if retrieve_tools_function is not None:
+        retrieve_tool_names.append(retrieve_tools_function.__name__)
         store_arg = get_store_arg(retrieve_tools_function)
     else:
         store_arg = None
     if retrieve_tools_coroutine is not None:
+        retrieve_tool_names.append(retrieve_tools_coroutine.__name__)
         store_arg_coro = get_store_arg(retrieve_tools_coroutine)
     else:
         store_arg_coro = None
@@ -135,7 +138,7 @@ def create_agent(
         else:
             destinations = []
             for call in last_message.tool_calls:
-                if call["name"] == "retrieve_tools":
+                if call["name"] in retrieve_tool_names:
                     destinations.append(Send("select_tools", [call]))
                 else:
                     tool_call = tool_node.inject_tool_args(call, state, store)
