@@ -83,7 +83,8 @@ def create_agent(
 
     def call_model(state: State, config: RunnableConfig, *, store: BaseStore) -> State:
         selected_tools = [tool_registry[id] for id in state["selected_tool_ids"]]
-        llm_with_tools = llm.bind_tools([retrieve_tools_function, *selected_tools])
+        to_bind = retrieve_tools_function or retrieve_tools_coroutine
+        llm_with_tools = llm.bind_tools([to_bind, *selected_tools])
         response = llm_with_tools.invoke(state["messages"])
         return {"messages": [response]}
 
@@ -91,7 +92,8 @@ def create_agent(
         state: State, config: RunnableConfig, *, store: BaseStore
     ) -> State:
         selected_tools = [tool_registry[id] for id in state["selected_tool_ids"]]
-        llm_with_tools = llm.bind_tools([retrieve_tools_coroutine, *selected_tools])
+        to_bind = retrieve_tools_coroutine or retrieve_tools_function
+        llm_with_tools = llm.bind_tools([to_bind, *selected_tools])
         response = await llm_with_tools.ainvoke(state["messages"])
         return {"messages": [response]}
 
