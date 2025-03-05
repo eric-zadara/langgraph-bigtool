@@ -37,7 +37,7 @@ def _format_selected_tools(
         tool_messages.append(
             ToolMessage(f"Available tools: {tool_names}", tool_call_id=tool_call_id)
         )
-        tool_ids.extend(result for result in batch)
+        tool_ids.extend(batch)
 
     return tool_messages, tool_ids
 
