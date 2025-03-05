@@ -1,8 +1,12 @@
-from typing import Any
+from typing import Any, Callable, Type, Union
 
-from langgraph.prebuilt import InjectedStore
+from langchain_core.tools.base import (
+    create_schema_from_function,
+    get_all_basemodel_annotations,
+)
+from langgraph.prebuilt import InjectedState, InjectedStore
 from langgraph.store.base import BaseStore
-from typing_extensions import Annotated
+from typing_extensions import Annotated, get_args, get_origin
 
 ToolId = str
 
@@ -44,3 +48,38 @@ def get_default_retrieval_tool(
         return [result.key for result in results]
 
     return retrieve_tools, aretrieve_tools
+
+
+def _is_injection(
+    type_arg: Any, injection_type: Union[Type[InjectedState], Type[InjectedStore]]
+) -> bool:
+    if isinstance(type_arg, injection_type) or (
+        isinstance(type_arg, type) and issubclass(type_arg, injection_type)
+    ):
+        return True
+    origin_ = get_origin(type_arg)
+    if origin_ is Union or origin_ is Annotated:
+        return any(_is_injection(ta, injection_type) for ta in get_args(type_arg))
+    return False
+
+
+def get_store_arg(func: Callable) -> str | None:
+    """Get the name of the argument corresponding to a Store (if any)."""
+    full_schema = create_schema_from_function(func.__name__, func)
+    for name, type_ in get_all_basemodel_annotations(full_schema).items():
+        injections = [
+            type_arg
+            for type_arg in get_args(type_)
+            if _is_injection(type_arg, InjectedStore)
+        ]
+        if len(injections) > 1:
+            ValueError(
+                "A tool argument should not be annotated with InjectedStore more than "
+                f"once. Received arg {name} with annotations {injections}."
+            )
+        elif len(injections) == 1:
+            return name
+        else:
+            pass
+
+    return None

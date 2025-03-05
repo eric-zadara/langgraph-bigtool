@@ -10,7 +10,7 @@ from langgraph.store.base import BaseStore
 from langgraph.types import Send
 from langgraph.utils.runnable import RunnableCallable
 
-from langgraph_bigtool.tools import get_default_retrieval_tool
+from langgraph_bigtool.tools import get_default_retrieval_tool, get_store_arg
 
 
 def _add_new(left: list, right: list) -> list:
@@ -71,6 +71,15 @@ def create_agent(
         retrieve_tools_function, retrieve_tools_coroutine = get_default_retrieval_tool(
             namespace_prefix, limit=limit, filter=filter
         )
+    # If needed, get argument name to inject Store
+    if retrieve_tools_function is not None:
+        store_arg = get_store_arg(retrieve_tools_function)
+    else:
+        store_arg = None
+    if retrieve_tools_coroutine is not None:
+        store_arg_coro = get_store_arg(retrieve_tools_coroutine)
+    else:
+        store_arg_coro = None
 
     def call_model(state: State, config: RunnableConfig, *, store: BaseStore) -> State:
         selected_tools = [tool_registry[id] for id in state["selected_tool_ids"]]
@@ -82,7 +91,7 @@ def create_agent(
         state: State, config: RunnableConfig, *, store: BaseStore
     ) -> State:
         selected_tools = [tool_registry[id] for id in state["selected_tool_ids"]]
-        llm_with_tools = llm.bind_tools([retrieve_tools_function, *selected_tools])
+        llm_with_tools = llm.bind_tools([retrieve_tools_coroutine, *selected_tools])
         response = await llm_with_tools.ainvoke(state["messages"])
         return {"messages": [response]}
 
@@ -93,7 +102,10 @@ def create_agent(
     ) -> State:
         selected_tools = {}
         for tool_call in tool_calls:
-            result = retrieve_tools_function(**tool_call["args"], store=store)
+            kwargs = {**tool_call["args"]}
+            if store_arg:
+                kwargs[store_arg] = store
+            result = retrieve_tools_function(**kwargs)
             selected_tools[tool_call["id"]] = result
 
         tool_messages, tool_ids = _format_selected_tools(selected_tools, tool_registry)
@@ -104,7 +116,10 @@ def create_agent(
     ) -> State:
         selected_tools = {}
         for tool_call in tool_calls:
-            result = await retrieve_tools_coroutine(**tool_call["args"], store=store)
+            kwargs = {**tool_call["args"]}
+            if store_arg_coro:
+                kwargs[store_arg_coro] = store
+            result = await retrieve_tools_coroutine(**kwargs)
             selected_tools[tool_call["id"]] = result
 
         tool_messages, tool_ids = _format_selected_tools(selected_tools, tool_registry)

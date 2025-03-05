@@ -200,7 +200,7 @@ async def run_end_to_end_test_async(
     _validate_result(result)
 
 
-def custom_retrieve_tools(
+def custom_retrieve_tools_store(
     query: str,
     *,
     store: Annotated[BaseStore, InjectedStore],
@@ -208,7 +208,7 @@ def custom_retrieve_tools(
     raise AssertionError
 
 
-async def acustom_retrieve_tools(
+async def acustom_retrieve_tools_store(
     query: str,
     *,
     store: Annotated[BaseStore, InjectedStore],
@@ -216,7 +216,22 @@ async def acustom_retrieve_tools(
     raise AssertionError
 
 
-def test_end_to_end() -> None:
+def custom_retrieve_tools_no_store(query: str) -> list[str]:
+    raise AssertionError
+
+
+async def acustom_retrieve_tools_no_store(query: str) -> list[str]:
+    raise AssertionError
+
+
+@pytest.mark.parametrize(
+    "custom_retrieve_tools, acustom_retrieve_tools",
+    [
+        (custom_retrieve_tools_store, acustom_retrieve_tools_store),
+        (custom_retrieve_tools_no_store, acustom_retrieve_tools_no_store),
+    ],
+)
+def test_end_to_end(custom_retrieve_tools, acustom_retrieve_tools) -> None:
     # Default
     fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
     run_end_to_end_test(fake_llm, fake_embeddings)
@@ -251,7 +266,14 @@ def test_end_to_end() -> None:
         )
 
 
-async def test_end_to_end_async() -> None:
+@pytest.mark.parametrize(
+    "custom_retrieve_tools, acustom_retrieve_tools",
+    [
+        (custom_retrieve_tools_store, acustom_retrieve_tools_store),
+        (custom_retrieve_tools_no_store, acustom_retrieve_tools_no_store),
+    ],
+)
+async def test_end_to_end_async(custom_retrieve_tools, acustom_retrieve_tools) -> None:
     # Default
     fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
     await run_end_to_end_test_async(fake_llm, fake_embeddings)
