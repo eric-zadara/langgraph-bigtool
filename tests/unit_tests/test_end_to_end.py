@@ -253,7 +253,7 @@ def test_end_to_end(custom_retrieve_tools, acustom_retrieve_tools) -> None:
 
     # Custom
     fake_llm, fake_embeddings = _get_fake_llm_and_embeddings(
-        retriever_tool_name=retriever_tool_name_async  # figure out
+        retriever_tool_name=retriever_tool_name_async
     )
     with pytest.raises(TypeError):
         # No sync function provided
