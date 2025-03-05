@@ -186,6 +186,7 @@ tool_registry = {
 def retrieve_tools(
     category: Literal["billing", "service"],
 ) -> list[str]:
+    """Get tools for a category."""
     if category == "billing":
         return ["id_1", "id_2"]
     else:
