@@ -171,3 +171,27 @@ builder = create_agent(
 )
 agent = builder.compile(store=store)
 ```
+
+#### Retrieving tools without LangGraph Store
+You can implement arbitrary logic for the tool retrieval, which does not have to run
+semantic search against a query. Below, we return collections of tools corresponding
+to categories:
+```python
+tool_registry = {
+    "id_1": get_balance,
+    "id_2": get_history,
+    "id_3": create_ticket,
+}
+
+def retrieve_tools(
+    category: Literal["billing", "service"],
+) -> list[str]:
+    """Get tools for a category."""
+    if category == "billing":
+        return ["id_1", "id_2"]
+    else:
+        return ["id_3"]
+```
+> [!TIP]
+> Because the argument schema is inferred from type hints, type hinting the function
+argument as a `Literal` will signal that the LLM should populate a categorical value.
