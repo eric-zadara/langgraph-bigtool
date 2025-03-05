@@ -28,7 +28,12 @@ def _format_selected_tools(
     tool_messages = []
     tool_ids = []
     for tool_call_id, batch in selected_tools.items():
-        tool_names = [tool_registry[result].name for result in batch]
+        tool_names = []
+        for result in batch:
+            if isinstance(tool_registry[result], BaseTool):
+                tool_names.append(tool_registry[result].name)
+            else:
+                tool_names.append(tool_registry[result].__name__)
         tool_messages.append(
             ToolMessage(f"Available tools: {tool_names}", tool_call_id=tool_call_id)
         )
@@ -39,7 +44,7 @@ def _format_selected_tools(
 
 def create_agent(
     llm: LanguageModelLike,
-    tool_registry: dict[str, BaseTool],
+    tool_registry: dict[str, BaseTool | Callable],
     *,
     limit: int = 2,
     filter: dict[str, any] | None = None,
@@ -55,7 +60,7 @@ def create_agent(
 
     Args:
         llm: Language model to use for the agent.
-        tool_registry: a dict mapping string IDs to tools.
+        tool_registry: a dict mapping string IDs to tools or callables.
         limit: Maximum number of tools to retrieve with each tool selection step.
         filter: Optional key-value pairs with which to filter results.
         namespace_prefix: Hierarchical path prefix to search within the Store. Defaults
