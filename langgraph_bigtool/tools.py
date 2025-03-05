@@ -1,7 +1,7 @@
-from typing import Any, Callable, Type, Union
+from typing import Any, Type, Union
 
 from langchain_core.tools.base import (
-    create_schema_from_function,
+    BaseTool,
     get_all_basemodel_annotations,
 )
 from langgraph.prebuilt import InjectedState, InjectedStore
@@ -63,9 +63,8 @@ def _is_injection(
     return False
 
 
-def get_store_arg(func: Callable) -> str | None:
-    """Get the name of the argument corresponding to a Store (if any)."""
-    full_schema = create_schema_from_function(func.__name__, func)
+def get_store_arg(tool: BaseTool) -> str | None:
+    full_schema = tool.get_input_schema()
     for name, type_ in get_all_basemodel_annotations(full_schema).items():
         injections = [
             type_arg

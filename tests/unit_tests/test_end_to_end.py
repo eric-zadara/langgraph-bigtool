@@ -207,6 +207,7 @@ def custom_retrieve_tools_store(
     *,
     store: Annotated[BaseStore, InjectedStore],
 ) -> list[str]:
+    """Custom retrieve tools."""
     raise CustomError
 
 
@@ -215,14 +216,17 @@ async def acustom_retrieve_tools_store(
     *,
     store: Annotated[BaseStore, InjectedStore],
 ) -> list[str]:
+    """Custom retrieve tools."""
     raise CustomError
 
 
 def custom_retrieve_tools_no_store(query: str) -> list[str]:
+    """Custom retrieve tools."""
     raise CustomError
 
 
 async def acustom_retrieve_tools_no_store(query: str) -> list[str]:
+    """Custom retrieve tools."""
     raise CustomError
 
 
@@ -303,7 +307,7 @@ async def test_end_to_end_async(custom_retrieve_tools, acustom_retrieve_tools) -
         )
 
     fake_llm, fake_embeddings = _get_fake_llm_and_embeddings(
-        retriever_tool_name=retriever_tool_name_async
+        retriever_tool_name=retriever_tool_name
     )
     with pytest.raises(CustomError):
         # Calls custom sync function
