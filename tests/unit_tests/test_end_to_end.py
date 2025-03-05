@@ -1,3 +1,4 @@
+import inspect
 import math
 import types
 import uuid
@@ -47,7 +48,7 @@ class FakeModel(GenericFakeChatModel):
         return self
 
 
-def _get_fake_llm_and_embeddings():
+def _get_fake_llm_and_embeddings(retriever_tool_name: str = "retrieve_tools"):
     fake_embeddings = DeterministicFakeEmbedding(size=EMBEDDING_SIZE)
 
     acos_tool = next(tool for tool in tool_registry.values() if tool.name == "acos")
@@ -61,7 +62,7 @@ def _get_fake_llm_and_embeddings():
                     "",
                     tool_calls=[
                         {
-                            "name": "retrieve_tools",
+                            "name": retriever_tool_name,
                             "args": {"query": initial_query},
                             "id": "abc123",
                             "type": "tool_call",
@@ -87,11 +88,15 @@ def _get_fake_llm_and_embeddings():
     return fake_llm, fake_embeddings
 
 
-def _validate_result(result: State) -> None:
+def _validate_result(result: State, tool_registry=tool_registry) -> None:
     assert set(result.keys()) == {"messages", "selected_tool_ids"}
-    assert "acos" in [
-        tool_registry[tool_id].name for tool_id in result["selected_tool_ids"]
-    ]
+    selected = []
+    for tool_id in result["selected_tool_ids"]:
+        if isinstance(tool_registry[tool_id], BaseTool):
+            selected.append(tool_registry[tool_id].name)
+        else:
+            selected.append(tool_registry[tool_id].__name__)
+    assert "acos" in selected
     assert set(message.type for message in result["messages"]) == {
         "human",
         "ai",
@@ -200,12 +205,17 @@ async def run_end_to_end_test_async(
     _validate_result(result)
 
 
+class CustomError(Exception):
+    pass
+
+
 def custom_retrieve_tools_store(
     query: str,
     *,
     store: Annotated[BaseStore, InjectedStore],
 ) -> list[str]:
-    raise AssertionError
+    """Custom retrieve tools."""
+    raise CustomError
 
 
 async def acustom_retrieve_tools_store(
@@ -213,15 +223,18 @@ async def acustom_retrieve_tools_store(
     *,
     store: Annotated[BaseStore, InjectedStore],
 ) -> list[str]:
-    raise AssertionError
+    """Custom retrieve tools."""
+    raise CustomError
 
 
 def custom_retrieve_tools_no_store(query: str) -> list[str]:
-    raise AssertionError
+    """Custom retrieve tools."""
+    raise CustomError
 
 
 async def acustom_retrieve_tools_no_store(query: str) -> list[str]:
-    raise AssertionError
+    """Custom retrieve tools."""
+    raise CustomError
 
 
 @pytest.mark.parametrize(
@@ -232,12 +245,16 @@ async def acustom_retrieve_tools_no_store(query: str) -> list[str]:
     ],
 )
 def test_end_to_end(custom_retrieve_tools, acustom_retrieve_tools) -> None:
+    retriever_tool_name = custom_retrieve_tools.__name__
+    retriever_tool_name_async = acustom_retrieve_tools.__name__
     # Default
     fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
     run_end_to_end_test(fake_llm, fake_embeddings)
 
     # Custom
-    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings(
+        retriever_tool_name=retriever_tool_name_async
+    )
     with pytest.raises(TypeError):
         # No sync function provided
         run_end_to_end_test(
@@ -246,8 +263,10 @@ def test_end_to_end(custom_retrieve_tools, acustom_retrieve_tools) -> None:
             retrieve_tools_coroutine=acustom_retrieve_tools,
         )
 
-    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
-    with pytest.raises(AssertionError):
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings(
+        retriever_tool_name=retriever_tool_name
+    )
+    with pytest.raises(CustomError):
         # Calls custom sync function
         run_end_to_end_test(
             fake_llm,
@@ -256,8 +275,10 @@ def test_end_to_end(custom_retrieve_tools, acustom_retrieve_tools) -> None:
             retrieve_tools_coroutine=acustom_retrieve_tools,
         )
 
-    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
-    with pytest.raises(AssertionError):
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings(
+        retriever_tool_name=retriever_tool_name
+    )
+    with pytest.raises(CustomError):
         # Calls custom sync function
         run_end_to_end_test(
             fake_llm,
@@ -274,13 +295,17 @@ def test_end_to_end(custom_retrieve_tools, acustom_retrieve_tools) -> None:
     ],
 )
 async def test_end_to_end_async(custom_retrieve_tools, acustom_retrieve_tools) -> None:
+    retriever_tool_name = custom_retrieve_tools.__name__
+    retriever_tool_name_async = acustom_retrieve_tools.__name__
     # Default
     fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
     await run_end_to_end_test_async(fake_llm, fake_embeddings)
 
     # Custom
-    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
-    with pytest.raises(AssertionError):
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings(
+        retriever_tool_name=retriever_tool_name
+    )
+    with pytest.raises(CustomError):
         # Calls custom sync function
         await run_end_to_end_test_async(
             fake_llm,
@@ -288,8 +313,10 @@ async def test_end_to_end_async(custom_retrieve_tools, acustom_retrieve_tools) -
             retrieve_tools_function=custom_retrieve_tools,
         )
 
-    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
-    with pytest.raises(AssertionError):
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings(
+        retriever_tool_name=retriever_tool_name
+    )
+    with pytest.raises(CustomError):
         # Calls custom sync function
         await run_end_to_end_test_async(
             fake_llm,
@@ -298,8 +325,10 @@ async def test_end_to_end_async(custom_retrieve_tools, acustom_retrieve_tools) -
             retrieve_tools_coroutine=acustom_retrieve_tools,
         )
 
-    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings()
-    with pytest.raises(AssertionError):
+    fake_llm, fake_embeddings = _get_fake_llm_and_embeddings(
+        retriever_tool_name=retriever_tool_name_async
+    )
+    with pytest.raises(CustomError):
         # Calls custom sync function
         await run_end_to_end_test_async(
             fake_llm,
@@ -372,3 +401,68 @@ def test_duplicate_tools() -> None:
         for args, _ in mock_bind_tools.call_args_list:
             tool_names = [tool.name for tool in args[0] if isinstance(tool, BaseTool)]
             assert len(tool_names) == len(set(tool_names))
+
+
+def test_functions_in_registry() -> None:
+    tool_registry = {str(uuid.uuid4()): tool.func for tool in all_tools}
+    fake_embeddings = DeterministicFakeEmbedding(size=EMBEDDING_SIZE)
+
+    acos_tool = next(tool for tool in tool_registry.values() if tool.__name__ == "acos")
+    initial_query = (
+        f"{acos_tool.__name__}: {inspect.getdoc(acos_tool)}"  # make same as embedding
+    )
+    fake_llm = FakeModel(
+        messages=iter(
+            [
+                AIMessage(
+                    "",
+                    tool_calls=[
+                        {
+                            "name": "retrieve_tools",
+                            "args": {"query": initial_query},
+                            "id": "abc123",
+                            "type": "tool_call",
+                        }
+                    ],
+                ),
+                AIMessage(
+                    "",
+                    tool_calls=[
+                        {
+                            "name": "acos",
+                            "args": {"x": 0.5},
+                            "id": "abc234",
+                            "type": "tool_call",
+                        }
+                    ],
+                ),
+                AIMessage("The arc cosine of 0.5 is approximately 1.047 radians."),
+            ]
+        )
+    )
+    store = InMemoryStore(
+        index={
+            "embed": fake_embeddings,
+            "dims": EMBEDDING_SIZE,
+            "fields": ["description"],
+        }
+    )
+    for tool_id, tool in tool_registry.items():
+        store.put(
+            ("tools",),
+            tool_id,
+            {
+                "description": f"{tool.__name__}: {inspect.getdoc(tool)}",
+            },
+        )
+
+    builder = create_agent(
+        fake_llm,
+        tool_registry,
+    )
+    agent = builder.compile(store=store)
+
+    result = agent.invoke(
+        {"messages": "Use available tools to calculate arc cosine of 0.5."}
+    )
+    _validate_result(result, tool_registry=tool_registry)
