@@ -195,3 +195,19 @@ def retrieve_tools(
 > [!TIP]
 > Because the argument schema is inferred from type hints, type hinting the function
 argument as a `Literal` will signal that the LLM should populate a categorical value.
+
+## Related work
+
+- [Toolshed: Scale Tool-Equipped Agents with Advanced RAG-Tool Fusion and Tool Knowledge Bases](
+https://doi.org/10.48550/arXiv.2410.14594) - Lumer, E., Subbiah, V.K., Burke, J.A.,
+Basavaraju, P.H. & Huber, A. (2024). arXiv:2410.14594.
+
+- [Graph RAG-Tool Fusion](
+https://doi.org/10.48550/arXiv.2502.07223) - Lumer, E., Basavaraju, P.H., Mason, M.,
+Burke, J.A. & Subbiah, V.K. (2025). arXiv:2502.07223.
+
+- https://github.com/quchangle1/LLM-Tool-Survey
+
+- [Retrieval Models Aren't Tool-Savvy: Benchmarking Tool Retrieval for Large Language Models](
+https://doi.org/10.48550/arXiv.2503.01763) - Shi, Z., Wang, Y., Yan, L., Ren, P.,
+Wang, S., Yin, D. & Ren, Z. arXiv:2503.01763.
