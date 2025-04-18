@@ -4,8 +4,9 @@ from langchain_core.language_models import LanguageModelLike
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool, StructuredTool
+from langchain.schema import SystemMessage
 from langgraph.graph import END, MessagesState, StateGraph
-from langgraph.prebuilt import ToolNode, create_react_agent
+from langgraph.prebuilt import ToolNode #, create_react_agent
 from langgraph.store.base import BaseStore
 from langgraph.types import Send
 from langgraph.utils.runnable import RunnableCallable
@@ -85,18 +86,18 @@ def create_agent(
 
     def call_model(state: State, config: RunnableConfig, *, store: BaseStore) -> State:
         selected_tools = [tool_registry[id] for id in state["selected_tool_ids"]]
-        #llm_with_tools = llm.bind_tools([retrieve_tools, *selected_tools])
-        llm_with_tools = create_react_agent(llm,tools=[retrieve_tools, *selected_tools],prompt=system_prompt)
-        response = llm_with_tools.invoke(state["messages"])
+        llm_with_tools = llm.bind_tools([retrieve_tools, *selected_tools])
+        #llm_with_tools = create_react_agent(llm,tools=[retrieve_tools, *selected_tools],prompt=system_prompt)
+        response = llm_with_tools.invoke([SystemMessage(system_prompt)] + state["messages"])
         return {"messages": [response]}
 
     async def acall_model(
         state: State, config: RunnableConfig, *, store: BaseStore
     ) -> State:
         selected_tools = [tool_registry[id] for id in state["selected_tool_ids"]]
-        #llm_with_tools = llm.bind_tools([retrieve_tools, *selected_tools])
-        llm_with_tools = create_react_agent(llm,tools=[retrieve_tools, *selected_tools],prompt=system_prompt)
-        response = await llm_with_tools.ainvoke(state["messages"])
+        llm_with_tools = llm.bind_tools([retrieve_tools, *selected_tools])
+        #llm_with_tools = create_react_agent(llm,tools=[retrieve_tools, *selected_tools],prompt=system_prompt)
+        response = await llm_with_tools.ainvoke([SystemMessage(system_prompt)] + state["messages"])
         return {"messages": [response]}
 
     tool_node = ToolNode(tool for tool in tool_registry.values())
