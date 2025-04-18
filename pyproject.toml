@@ -4,7 +4,7 @@ build-backend = "pdm.backend"
 
 [project]
 name = "langgraph-bigtool"
-version = "0.0.2"
+version = "0.0.3"
 description = "Build LangGraph agents with large numbers of tools"
 readme = "README.md"
 requires-python = ">=3.10"

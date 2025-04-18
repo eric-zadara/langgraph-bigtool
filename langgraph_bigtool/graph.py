@@ -5,7 +5,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool, StructuredTool
 from langgraph.graph import END, MessagesState, StateGraph
-from langgraph.prebuilt import ToolNode
+from langgraph.prebuilt import ToolNode, create_react_agent
 from langgraph.store.base import BaseStore
 from langgraph.types import Send
 from langgraph.utils.runnable import RunnableCallable
@@ -51,6 +51,7 @@ def create_agent(
     namespace_prefix: tuple[str, ...] = ("tools",),
     retrieve_tools_function: Callable | None = None,
     retrieve_tools_coroutine: Callable | None = None,
+    system_prompt: str = "You are a helpful agent with the unique ability to search for new tools, if you do not currently have a tool to accomplish your task, you should use select_tool to try to find one."
 ) -> StateGraph:
     """Create an agent with a registry of tools.
 
@@ -84,7 +85,8 @@ def create_agent(
 
     def call_model(state: State, config: RunnableConfig, *, store: BaseStore) -> State:
         selected_tools = [tool_registry[id] for id in state["selected_tool_ids"]]
-        llm_with_tools = llm.bind_tools([retrieve_tools, *selected_tools])
+        #llm_with_tools = llm.bind_tools([retrieve_tools, *selected_tools])
+        llm_with_tools = create_react_agent(llm,tools=[retrieve_tools, *selected_tools],prompt=system_prompt)
         response = llm_with_tools.invoke(state["messages"])
         return {"messages": [response]}
 
@@ -92,7 +94,8 @@ def create_agent(
         state: State, config: RunnableConfig, *, store: BaseStore
     ) -> State:
         selected_tools = [tool_registry[id] for id in state["selected_tool_ids"]]
-        llm_with_tools = llm.bind_tools([retrieve_tools, *selected_tools])
+        #llm_with_tools = llm.bind_tools([retrieve_tools, *selected_tools])
+        llm_with_tools = create_react_agent(llm,tools=[retrieve_tools, *selected_tools],prompt=system_prompt)
         response = await llm_with_tools.ainvoke(state["messages"])
         return {"messages": [response]}
 
